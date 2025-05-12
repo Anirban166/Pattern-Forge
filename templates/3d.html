@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>3D Shirt Pattern</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Arial', sans-serif;
+      background-color: #1e1e1e;
+      color: white;
+      overflow: hidden;
+    }
+
+    header {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      z-index: 10;
+      font-size: 28px;
+      font-weight: bold;
+      text-transform: uppercase;
+    }
+
+    .controls {
+      position: absolute;
+      bottom: 20px;
+      left: 20px;
+      background-color: rgba(0, 0, 0, 0.7);
+      padding: 15px;
+      border-radius: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .control-group {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 16px;
+    }
+
+    .control-group label {
+      width: 120px;
+      color: #ddd;
+    }
+
+    .control-group input[type="range"],
+    .control-group input[type="color"],
+    .control-group select {
+      width: 150px;
+      background: #333;
+      border: none;
+      color: #fff;
+      padding: 4px;
+      border-radius: 4px;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    .measurement {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      background-color: rgba(0, 0, 0, 0.7);
+      padding: 10px;
+      border-radius: 8px;
+      font-size: 16px;
+      color: #fff;
+    }
+
+    .zoom-buttons {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      z-index: 10;
+    }
+
+    .zoom-button {
+      background-color: rgba(0, 0, 0, 0.7);
+      color: white;
+      padding: 10px;
+      margin: 5px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+  </style>
+
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.153.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.153.0/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <header>3D Parametric Shirt Pattern</header>
+
+  <canvas id="canvas"></canvas>
+
+  <div class="controls">
+    <div class="control-group">
+      <label for="patternPreset">Pattern Preset</label>
+      <select id="patternPreset">
+        <option value="basic">Basic Shirt</option>
+        <option value="shirtWithCollar">Shirt with Collar</option>
+        <option value="shirtWithSleeves">Shirt with Sleeves</option>
+      </select>
+    </div>
+    <div class="control-group">
+      <label for="width">Width</label>
+      <input type="range" id="width" min="50" max="200" value="90" step="1">
+    </div>
+    <div class="control-group">
+      <label for="height">Height</label>
+      <input type="range" id="height" min="50" max="200" value="100" step="1">
+    </div>
+    <div class="control-group">
+      <label for="scale">Uniform Scale</label>
+      <input type="range" id="scale" min="0.5" max="2.0" value="1.0" step="0.01">
+    </div>
+    <div class="control-group">
+      <label for="fillColor">Fill Color</label>
+      <input type="color" id="fillColor" value="#333333">
+    </div>
+  </div>
+
+  <div class="measurement" id="measurementDisplay">Total Measurement: 0</div>
+
+  <div class="zoom-buttons">
+    <button class="zoom-button" id="zoomIn">Zoom In</button>
+    <button class="zoom-button" id="zoomOut">Zoom Out</button>
+  </div>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x1e1e1e);
+
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.set(0, 0, 200);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, canvas: document.getElementById('canvas') });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+
+    const group = new THREE.Group();
+    scene.add(group);
+
+    const patternPresets = {
+      basic: [
+        ["line", [[90, 0], [90, 40]]],
+        ["bezier", [[90, 40], [90, 60], [63, 80], [45, 100]]],
+        ["line", [[45, 100], [0, 100]]],
+        ["line", [[0, 100], [0, 0]]],
+        ["bezier", [[0, 0], [18, -40], [72, -40], [90, 0]]]
+      ],
+      shirtWithCollar: [
+        ["line", [[90, 0], [90, 40]]],
+        ["bezier", [[90, 40], [90, 60], [63, 80], [45, 100]]],
+        ["line", [[45, 100], [0, 100]]],
+        ["line", [[0, 100], [0, 40]]], // Collar added
+        ["bezier", [[0, 40], [18, -10], [72, -10], [90, 0]]]
+      ],
+      shirtWithSleeves: [
+        // Body of the shirt
+        ["line", [[90, 0], [90, 40]]],
+        ["bezier", [[90, 40], [90, 60], [63, 80], [45, 100]]],
+        ["line", [[45, 100], [0, 100]]],
+        ["line", [[0, 100], [0, 0]]],
+        ["bezier", [[0, 0], [18, -40], [72, -40], [90, 0]]],
+
+        // Sleeve part
+        // Shoulder start to sleeve
+        ["bezier", [[90, 40], [110, 30], [130, 60], [150, 50]]], // Sleeve curve
+
+        // Sleeve outline
+        ["line", [[150, 50], [160, 70]]], // Curve down
+        ["line", [[160, 70], [170, 90]]], // Continue curve down
+        ["line", [[170, 90], [160, 110]]], // Sleeve bottom
+        ["line", [[160, 110], [140, 120]]], // Connect to shirt body
+        ["line", [[140, 120], [130, 100]]], // Further refine sleeve edge
+
+        // Closing the sleeve to the shirt body (at the cuff)
+        ["line", [[130, 100], [150, 100]]]  // Sleeve closure
+      ]
+    };
+
+    const generatePattern = (patternData, width, height, colorHex) => {
+      group.clear();
+
+      const shape = new THREE.Shape();
+      patternData.forEach((segment, idx) => {
+        const scaled = segment[1].map(p => new THREE.Vector2(p[0] * (width / 100), p[1] * (height / 100)));
+        if (idx === 0) {
+          shape.moveTo(scaled[0].x, scaled[0].y);
+        }
+        if (segment[0] === 'line') {
+          shape.lineTo(scaled[1].x, scaled[1].y);
+        } else if (segment[0] === 'bezier') {
+          shape.bezierCurveTo(scaled[1].x, scaled[1].y, scaled[2].x, scaled[2].y, scaled[3].x, scaled[3].y);
+        }
+      });
+
+      const geometry = new THREE.ShapeGeometry(shape);
+      const fill = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({
+        color: new THREE.Color(colorHex),
+        side: THREE.DoubleSide
+      }));
+      group.add(fill);
+
+      const edgeGeo = new THREE.EdgesGeometry(geometry, 1);
+      const edgeMat = new THREE.LineBasicMaterial({ color: 0xffffff, linewidth: 3 });
+      const edgeLines = new THREE.LineSegments(edgeGeo, edgeMat);
+      group.add(edgeLines);
+
+      const totalMeasurement = calculateTotalMeasurement(patternData, width, height);
+      document.getElementById('measurementDisplay').textContent = `Total Measurement: ${totalMeasurement.toFixed(2)} cm`;
+    };
+
+    const calculateTotalMeasurement = (patternData, width, height) => {
+      let total = 0;
+      patternData.forEach((segment) => {
+        const scaledPoints = segment[1].map(p => new THREE.Vector2(p[0] * (width / 100), p[1] * (height / 100)));
+        for (let i = 1; i < scaledPoints.length; i++) {
+          total += scaledPoints[i].distanceTo(scaledPoints[i - 1]);
+        }
+      });
+      return total;
+    };
+
+    const patternSelect = document.getElementById('patternPreset');
+    const widthSlider = document.getElementById('width');
+    const heightSlider = document.getElementById('height');
+    const scaleSlider = document.getElementById('scale');
+    const colorInput = document.getElementById('fillColor');
+
+    function updatePattern() {
+      const patternName = patternSelect.value;
+      const patternData = patternPresets[patternName];
+      let width = parseFloat(widthSlider.value);
+      let height = parseFloat(heightSlider.value);
+      const scale = parseFloat(scaleSlider.value);
+      const fillColor = colorInput.value;
+
+      if (scale !== 1.0) {
+        width *= scale;
+        height *= scale;
+      }
+
+      generatePattern(patternData, width, height, fillColor);
+    }
+
+    patternSelect.addEventListener('change', updatePattern);
+    widthSlider.addEventListener('input', updatePattern);
+    heightSlider.addEventListener('input', updatePattern);
+    scaleSlider.addEventListener('input', updatePattern);
+    colorInput.addEventListener('input', updatePattern);
+
+    generatePattern(patternPresets.basic, 90, 100, colorInput.value);
+
+    window.addEventListener("resize", () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    document.getElementById('zoomIn').addEventListener('click', () => {
+      camera.position.z -= 10;
+    });
+
+    document.getElementById('zoomOut').addEventListener('click', () => {
+      camera.position.z += 10;
+    });
+
+    const animate = () => {
+      requestAnimationFrame(animate);
+      controls.update();
+      renderer.render(scene, camera);
+    };
+
+    animate();
+  </script>
+</body>
+</html>
