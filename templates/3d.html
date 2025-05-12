@@ -4,10 +4,11 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>3D Shirt Pattern</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
   <style>
     body {
       margin: 0;
-      font-family: 'Arial', sans-serif;
+      font-family: Arial, sans-serif;
       background-color: #1e1e1e;
       color: white;
       overflow: hidden;
@@ -20,7 +21,6 @@
       z-index: 10;
       font-size: 28px;
       font-weight: bold;
-      text-transform: uppercase;
     }
 
     .controls {
@@ -47,21 +47,9 @@
       color: #ddd;
     }
 
-    .control-group input[type="range"],
-    .control-group input[type="color"],
+    .control-group input,
     .control-group select {
       width: 150px;
-      background: #333;
-      border: none;
-      color: #fff;
-      padding: 4px;
-      border-radius: 4px;
-    }
-
-    canvas {
-      display: block;
-      width: 100%;
-      height: 100%;
     }
 
     .measurement {
@@ -71,8 +59,6 @@
       background-color: rgba(0, 0, 0, 0.7);
       padding: 10px;
       border-radius: 8px;
-      font-size: 16px;
-      color: #fff;
     }
 
     .zoom-buttons {
@@ -80,16 +66,29 @@
       top: 20px;
       right: 20px;
       z-index: 10;
+      display: flex;
+      flex-direction: column;
     }
 
     .zoom-button {
       background-color: rgba(0, 0, 0, 0.7);
       color: white;
       padding: 10px;
-      margin: 5px;
+      margin: 5px 0;
       border-radius: 4px;
       cursor: pointer;
-      font-size: 16px;
+      border: none;
+      font-size: 18px;
+      line-height: 1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      width: 40px;
+      height: 40px;
+    }
+
+    .zoom-button:hover {
+      background-color: rgba(0, 0, 0, 0.9);
     }
   </style>
 
@@ -104,7 +103,6 @@
 </head>
 <body>
   <header>3D Parametric Shirt Pattern</header>
-
   <canvas id="canvas"></canvas>
 
   <div class="controls">
@@ -114,6 +112,7 @@
         <option value="basic">Basic Shirt</option>
         <option value="shirtWithCollar">Shirt with Collar</option>
         <option value="shirtWithSleeves">Shirt with Sleeves</option>
+        <option value="shirtWithYoke">Shirt with Yoke</option>
       </select>
     </div>
     <div class="control-group">
@@ -130,15 +129,15 @@
     </div>
     <div class="control-group">
       <label for="fillColor">Fill Color</label>
-      <input type="color" id="fillColor" value="#333333">
+      <input type="color" id="fillColor" value="#1e1e1e">
     </div>
   </div>
 
   <div class="measurement" id="measurementDisplay">Total Measurement: 0</div>
 
   <div class="zoom-buttons">
-    <button class="zoom-button" id="zoomIn">Zoom In</button>
-    <button class="zoom-button" id="zoomOut">Zoom Out</button>
+    <button class="zoom-button" id="zoomIn"><i class="fas fa-plus"></i></button>
+    <button class="zoom-button" id="zoomOut"><i class="fas fa-minus"></i></button>
   </div>
 
   <script type="module">
@@ -172,60 +171,84 @@
         ["line", [[90, 0], [90, 40]]],
         ["bezier", [[90, 40], [90, 60], [63, 80], [45, 100]]],
         ["line", [[45, 100], [0, 100]]],
-        ["line", [[0, 100], [0, 40]]], // Collar added
+        ["line", [[0, 100], [0, 40]]],
         ["bezier", [[0, 40], [18, -10], [72, -10], [90, 0]]]
       ],
       shirtWithSleeves: [
-        // Body of the shirt
+        // Shirt body
         ["line", [[90, 0], [90, 40]]],
         ["bezier", [[90, 40], [90, 60], [63, 80], [45, 100]]],
         ["line", [[45, 100], [0, 100]]],
         ["line", [[0, 100], [0, 0]]],
         ["bezier", [[0, 0], [18, -40], [72, -40], [90, 0]]],
 
-        // Sleeve part
-        // Shoulder start to sleeve
-        ["bezier", [[90, 40], [110, 30], [130, 60], [150, 50]]], // Sleeve curve
-
-        // Sleeve outline
-        ["line", [[150, 50], [160, 70]]], // Curve down
-        ["line", [[160, 70], [170, 90]]], // Continue curve down
-        ["line", [[170, 90], [160, 110]]], // Sleeve bottom
-        ["line", [[160, 110], [140, 120]]], // Connect to shirt body
-        ["line", [[140, 120], [130, 100]]], // Further refine sleeve edge
-
-        // Closing the sleeve to the shirt body (at the cuff)
-        ["line", [[130, 100], [150, 100]]]  // Sleeve closure
+        // Right sleeve (separate shape)
+        ["break"],
+        ["bezier", [[90, 40], [110, 30], [130, 60], [150, 50]]],
+        ["line", [[150, 50], [160, 70]]],
+        ["line", [[160, 70], [170, 90]]],
+        ["line", [[170, 90], [160, 110]]],
+        ["line", [[160, 110], [140, 120]]],
+        ["line", [[140, 120], [130, 100]]],
+        ["line", [[130, 100], [150, 100]]]
+      ],
+      shirtWithYoke: [
+        // Shirt body with straight bottom
+        ["line", [[90, 0], [90, 40]]],
+        ["bezier", [[90, 40], [90, 60], [63, 80], [45, 100]]],
+        ["line", [[45, 100], [0, 100]]],
+        ["line", [[0, 100], [0, 40]]],
+        ["line", [[0, 40], [45, 40]]],
+        ["line", [[45, 40], [90, 40]]]
       ]
     };
 
     const generatePattern = (patternData, width, height, colorHex) => {
       group.clear();
+      let shape = new THREE.Shape();
+      let lastPoint = null;
 
-      const shape = new THREE.Shape();
-      patternData.forEach((segment, idx) => {
-        const scaled = segment[1].map(p => new THREE.Vector2(p[0] * (width / 100), p[1] * (height / 100)));
-        if (idx === 0) {
-          shape.moveTo(scaled[0].x, scaled[0].y);
+      const addShape = (shp) => {
+        if (shp && shp.getPoints().length > 1) {
+          const geometry = new THREE.ShapeGeometry(shp);
+          const fill = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({
+            color: new THREE.Color(colorHex),
+            side: THREE.DoubleSide
+          }));
+          group.add(fill);
+
+          const edgeGeo = new THREE.EdgesGeometry(geometry);
+          const edgeMat = new THREE.LineBasicMaterial({ color: 0xffffff });
+          const edgeLines = new THREE.LineSegments(edgeGeo, edgeMat);
+          group.add(edgeLines);
         }
-        if (segment[0] === 'line') {
+      };
+
+      patternData.forEach((segment) => {
+        if (segment[0] === "break") {
+          addShape(shape);
+          shape = new THREE.Shape();
+          lastPoint = null;
+          return;
+        }
+
+        const scaled = segment[1].map(p => new THREE.Vector2(p[0] * (width / 100), p[1] * (height / 100)));
+        const start = scaled[0];
+
+        if (!lastPoint || !lastPoint.equals(start)) {
+          shape.moveTo(start.x, start.y);
+        }
+
+        if (segment[0] === "line") {
           shape.lineTo(scaled[1].x, scaled[1].y);
-        } else if (segment[0] === 'bezier') {
+          lastPoint = scaled[1];
+        } else if (segment[0] === "bezier") {
           shape.bezierCurveTo(scaled[1].x, scaled[1].y, scaled[2].x, scaled[2].y, scaled[3].x, scaled[3].y);
+          lastPoint = scaled[3];
         }
       });
 
-      const geometry = new THREE.ShapeGeometry(shape);
-      const fill = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({
-        color: new THREE.Color(colorHex),
-        side: THREE.DoubleSide
-      }));
-      group.add(fill);
-
-      const edgeGeo = new THREE.EdgesGeometry(geometry, 1);
-      const edgeMat = new THREE.LineBasicMaterial({ color: 0xffffff, linewidth: 3 });
-      const edgeLines = new THREE.LineSegments(edgeGeo, edgeMat);
-      group.add(edgeLines);
+      addShape(shape);
 
       const totalMeasurement = calculateTotalMeasurement(patternData, width, height);
       document.getElementById('measurementDisplay').textContent = `Total Measurement: ${totalMeasurement.toFixed(2)} cm`;
@@ -234,6 +257,7 @@
     const calculateTotalMeasurement = (patternData, width, height) => {
       let total = 0;
       patternData.forEach((segment) => {
+        if (segment[0] === "break") return;
         const scaledPoints = segment[1].map(p => new THREE.Vector2(p[0] * (width / 100), p[1] * (height / 100)));
         for (let i = 1; i < scaledPoints.length; i++) {
           total += scaledPoints[i].distanceTo(scaledPoints[i - 1]);
@@ -270,7 +294,16 @@
     scaleSlider.addEventListener('input', updatePattern);
     colorInput.addEventListener('input', updatePattern);
 
-    generatePattern(patternPresets.basic, 90, 100, colorInput.value);
+    const zoomInButton = document.getElementById('zoomIn');
+    const zoomOutButton = document.getElementById('zoomOut');
+
+    zoomInButton.addEventListener('click', () => {
+      camera.position.z -= 10;
+    });
+
+    zoomOutButton.addEventListener('click', () => {
+      camera.position.z += 10;
+    });
 
     window.addEventListener("resize", () => {
       camera.aspect = window.innerWidth / window.innerHeight;
@@ -278,13 +311,7 @@
       renderer.setSize(window.innerWidth, window.innerHeight);
     });
 
-    document.getElementById('zoomIn').addEventListener('click', () => {
-      camera.position.z -= 10;
-    });
-
-    document.getElementById('zoomOut').addEventListener('click', () => {
-      camera.position.z += 10;
-    });
+    updatePattern();
 
     const animate = () => {
       requestAnimationFrame(animate);

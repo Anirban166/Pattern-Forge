@@ -15,7 +15,6 @@ class ShirtPattern:
         self.collar_width = collar_width
 
     def generate_segments(self) -> List[Segment]:
-        # Sample shape: pentagon with a bezier sleeve curve and collar curve
         p0 = (0, 0)
         p1 = (self.width, 0)
         p2 = (self.width, self.height * 0.4)
@@ -41,12 +40,25 @@ class ShirtPattern:
              p1]
         )
 
+        # Right sleeve (separate shape for 3D view)
+        sleeve_start = (self.width, self.height * 0.4)
+        sleeve_end = (self.width * 1.5, self.height * 0.6)
+        bezier_sleeve_right = (
+            "bezier",
+            [sleeve_start,
+             (self.width * 1.2, self.height * 0.5),
+             (self.width * 1.3, self.height * 0.7),
+             sleeve_end]
+        )
+
         return [
             ("line", [p1, p2]),
             bezier_sleeve,
             ("line", [p3, p4]),
             ("line", [p4, p5]),
-            bezier_collar
+            bezier_collar,
+            # Adding sleeve
+            bezier_sleeve_right,
         ]
 
     @property
