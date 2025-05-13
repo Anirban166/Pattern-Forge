@@ -5,93 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>3D Shirt Pattern</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-  <style>
-    body {
-      margin: 0;
-      font-family: Arial, sans-serif;
-      background-color: #1e1e1e;
-      color: white;
-      overflow: hidden;
-    }
-
-    header {
-      position: absolute;
-      top: 20px;
-      left: 20px;
-      z-index: 10;
-      font-size: 28px;
-      font-weight: bold;
-    }
-
-    .controls {
-      position: absolute;
-      bottom: 20px;
-      left: 20px;
-      background-color: rgba(0, 0, 0, 0.7);
-      padding: 15px;
-      border-radius: 8px;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
-
-    .control-group {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      font-size: 16px;
-    }
-
-    .control-group label {
-      width: 120px;
-      color: #ddd;
-    }
-
-    .control-group input,
-    .control-group select {
-      width: 150px;
-    }
-
-    .measurement {
-      position: absolute;
-      bottom: 20px;
-      right: 20px;
-      background-color: rgba(0, 0, 0, 0.7);
-      padding: 10px;
-      border-radius: 8px;
-    }
-
-    .zoom-buttons {
-      position: absolute;
-      top: 20px;
-      right: 20px;
-      z-index: 10;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .zoom-button {
-      background-color: rgba(0, 0, 0, 0.7);
-      color: white;
-      padding: 10px;
-      margin: 5px 0;
-      border-radius: 4px;
-      cursor: pointer;
-      border: none;
-      font-size: 18px;
-      line-height: 1;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      width: 40px;
-      height: 40px;
-    }
-
-    .zoom-button:hover {
-      background-color: rgba(0, 0, 0, 0.9);
-    }
-  </style>
-
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
   <script type="importmap">
     {
       "imports": {
@@ -104,7 +18,6 @@
 <body>
   <header>3D Parametric Shirt Pattern</header>
   <canvas id="canvas"></canvas>
-
   <div class="controls">
     <div class="control-group">
       <label for="patternPreset">Pattern Preset</label>
@@ -113,6 +26,7 @@
         <option value="shirtWithCollar">Shirt with Collar</option>
         <option value="shirtWithSleeves">Shirt with Sleeves</option>
         <option value="shirtWithYoke">Shirt with Yoke</option>
+        <option value="shirtFull">Full Shirt</option>
       </select>
     </div>
     <div class="control-group">
@@ -143,6 +57,8 @@
   <script type="module">
     import * as THREE from 'three';
     import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { FontLoader } from 'three/addons/loaders/FontLoader.js';
+    import { TextGeometry } from 'three/addons/geometries/TextGeometry.js';
 
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x1e1e1e);
@@ -158,53 +74,91 @@
 
     const group = new THREE.Group();
     scene.add(group);
+    // group.position.set(0, 0, 0);
+
+    const labelGroup = new THREE.Group();
+    scene.add(labelGroup);
+    labelGroup.visible = true;
+
+    const fontLoader = new FontLoader();
+    let font;
+
+    fontLoader.load('https://cdn.jsdelivr.net/npm/three@0.153.0/examples/fonts/helvetiker_regular.typeface.json', function (loadedFont) {
+      font = loadedFont;
+      updatePattern();
+    });
 
     const patternPresets = {
       basic: [
-        ["line", [[90, 0], [90, 40]]],
-        ["bezier", [[90, 40], [90, 60], [63, 80], [45, 100]]],
-        ["line", [[45, 100], [0, 100]]],
-        ["line", [[0, 100], [0, 0]]],
-        ["bezier", [[0, 0], [18, -40], [72, -40], [90, 0]]]
+        { type: "line", points: [[90, 0], [90, 40]], label: "Line: (90,0) to (90,40)" },
+        { type: "bezier", points: [[90, 40], [90, 60], [63, 80], [45, 100]], label: "Bezier: (90,40), (90,60), (63,80), (45,100)" },
+        { type: "line", points: [[45, 100], [0, 100]], label: "Line: (45,100) to (0,100)" },
+        { type: "line", points: [[0, 100], [0, 0]], label: "Line: (0,100) to (0,0)" },
+        { type: "bezier", points: [[0, 0], [18, -40], [72, -40], [90, 0]], label: "Bezier: (0,0), (18,-40), (72,-40), (90,0)" }
       ],
       shirtWithCollar: [
-        ["line", [[90, 0], [90, 40]]],
-        ["bezier", [[90, 40], [90, 60], [63, 80], [45, 100]]],
-        ["line", [[45, 100], [0, 100]]],
-        ["line", [[0, 100], [0, 40]]],
-        ["bezier", [[0, 40], [18, -10], [72, -10], [90, 0]]]
+        { type: "line", points: [[90, 0], [90, 40]], label: "Line: (90,0) to (90,40)" },
+        { type: "bezier", points: [[90, 40], [90, 60], [63, 80], [45, 100]], label: "Bezier: (90,40), (90,60), (63,80), (45,100)" },
+        { type: "line", points: [[45, 100], [0, 100]], label: "Line: (45,100) to (0,100)" },
+        { type: "line", points: [[0, 100], [0, 40]], label: "Line: (0,100) to (0,40)" },
+        { type: "bezier", points: [[0, 40], [18, -10], [72, -10], [90, 0]], label: "Bezier: (0,40), (18,-10), (72,-10), (90,0)" }
       ],
       shirtWithSleeves: [
         // Shirt body
-        ["line", [[90, 0], [90, 40]]],
-        ["bezier", [[90, 40], [90, 60], [63, 80], [45, 100]]],
-        ["line", [[45, 100], [0, 100]]],
-        ["line", [[0, 100], [0, 0]]],
-        ["bezier", [[0, 0], [18, -40], [72, -40], [90, 0]]],
-
+        { type: "line", points: [[90, 0], [90, 40]], label: "Line: (90,0) to (90,40)" },
+        { type: "bezier", points: [[90, 40], [90, 60], [63, 80], [45, 100]], label: "Bezier: (90,40), (90,60), (63,80), (45,100)" },
+        { type: "line", points: [[45, 100], [0, 100]], label: "Line: (45,100) to (0,100)" },
+        { type: "line", points: [[0, 100], [0, 0]], label: "Line: (0,100) to (0,0)" },
+        { type: "bezier", points: [[0, 0], [18, -40], [72, -40], [90, 0]], label: "Bezier: (0,0), (18,-40), (72,-40), (90,0)" },
         // Right sleeve (separate shape)
-        ["break"],
-        ["bezier", [[90, 40], [110, 30], [130, 60], [150, 50]]],
-        ["line", [[150, 50], [160, 70]]],
-        ["line", [[160, 70], [170, 90]]],
-        ["line", [[170, 90], [160, 110]]],
-        ["line", [[160, 110], [140, 120]]],
-        ["line", [[140, 120], [130, 100]]],
-        ["line", [[130, 100], [150, 100]]]
+        { type: "break" },
+        { type: "bezier", points: [[90, 40], [110, 30], [130, 60], [150, 50]], label: "Bezier: (90,40), (110,30), (130,60), (150,50)" },
+        { type: "line", points: [[150, 50], [160, 70]], label: "Line: (150,50) to (160,70)" },
+        { type: "line", points: [[160, 70], [170, 90]], label: "Line: (160,70) to (170,90)" },
+        { type: "line", points: [[170, 90], [160, 110]], label: "Line: (170,90) to (160,110)" },
+        { type: "line", points: [[160, 110], [140, 120]], label: "Line: (160,110) to (140,120)" },
+        { type: "line", points: [[140, 120], [130, 100]], label: "Line: (140,120) to (130,100)" },
+        { type: "line", points: [[130, 100], [150, 100]], label: "Line: (130,100) to (150,100)" }
       ],
       shirtWithYoke: [
-        // Shirt body with straight bottom
-        ["line", [[90, 0], [90, 40]]],
-        ["bezier", [[90, 40], [90, 60], [63, 80], [45, 100]]],
-        ["line", [[45, 100], [0, 100]]],
-        ["line", [[0, 100], [0, 40]]],
-        ["line", [[0, 40], [45, 40]]],
-        ["line", [[45, 40], [90, 40]]]
+        { type: "line", points: [[90, 0], [90, 40]], label: "Line: (90,0) to (90,40)" },
+        { type: "bezier", points: [[90, 40], [90, 60], [63, 80], [45, 100]], label: "Bezier: (90,40), (90,60), (63,80), (45,100)" },
+        { type: "line", points: [[45, 100], [0, 100]], label: "Line: (45,100) to (0,100)" },
+        { type: "line", points: [[0, 100], [0, 40]], label: "Line: (0,100) to (0,40)" },
+        { type: "line", points: [[0, 40], [45, 40]], label: "Line: (0,40) to (45,40)" },
+        { type: "line", points: [[45, 40], [90, 40]], label: "Line: (45,40) to (90,40)" }
+      ],
+      shirtFull: [
+        { type: "line", points: [[20, 0], [80, 0]], label: "Line: (20,0) to (80,0)" },
+        { type: "bezier", points: [[80, 0], [85, 5], [83, 10], [80, 12]], label: "Bezier: (80,0), (85,5), (83,10), (80,12)" },
+        { type: "line", points: [[80, 12], [80, 30]], label: "Line: (80,12) to (80,30)" },
+        { type: "bezier", points: [[80, 30], [78, 35], [75, 40], [70, 42]], label: "Bezier: (80,30), (78,35), (75,40), (70,42)" },
+        { type: "bezier", points: [[70, 42], [65, 50], [60, 65], [60, 80]], label: "Bezier: (70,42), (65,50), (60,65), (60,80)" },
+        { type: "line", points: [[60, 80], [60, 100]], label: "Line: (60,80) to (60,100)" },
+        { type: "line", points: [[60, 100], [20, 100]], label: "Line: (60,100) to (20,100)" },
+        { type: "line", points: [[20, 100], [20, 80]], label: "Line: (20,100) to (20,80)" },
+        { type: "bezier", points: [[20, 80], [25, 65], [30, 50], [35, 42]], label: "Bezier: (20,80), (25,65), (30,50), (35,42)" },
+        { type: "bezier", points: [[35, 42], [40, 40], [42, 35], [40, 30]], label: "Bezier: (35,42), (40,40), (42,35), (40,30)" },
+        { type: "line", points: [[40, 30], [20, 12]], label: "Line: (40,30) to (20,12)" },
+        { type: "line", points: [[20, 12], [20, 0]], label: "Line: (20,12) to (20,0)" },
+        { type: "line", points: [[120, 0], [180, 0]], label: "Line: (120,0) to (180,0)" },
+        { type: "bezier", points: [[120, 0], [125, 5], [123, 15], [130, 18]], label: "Bezier: (120,0), (125,5), (123,15), (130,18)" },
+        { type: "line", points: [[130, 18], [130, 32]], label: "Line: (130,18) to (130,32)" },
+        { type: "bezier", points: [[130, 32], [132, 37], [135, 42], [140, 44]], label: "Bezier: (130,32), (132,37), (135,42), (140,44)" },
+        { type: "bezier", points: [[140, 44], [145, 52], [150, 67], [150, 82]], label: "Bezier: (140,44), (145,52), (150,67), (150,82)" },
+        { type: "line", points: [[150, 82], [150, 100]], label: "Line: (150,82) to (150,100)" },
+        { type: "line", points: [[150, 100], [120, 100]], label: "Line: (150,100) to (120,100)" },
+        { type: "line", points: [[120, 100], [120, 82]], label: "Line: (120,100) to (120,82)" },
+        { type: "bezier", points: [[120, 82], [125, 67], [130, 52], [135, 44]], label: "Bezier: (120,82), (125,67), (130,52), (135,44)" },
+        { type: "bezier", points: [[135, 44], [138, 42], [140, 37], [138, 32]], label: "Bezier: (135,44), (138,42), (140,37), (138,32)" },
+        { type: "line", points: [[138, 32], [120, 18]], label: "Line: (138,32) to (120,18)" },
+        { type: "line", points: [[120, 18], [120, 0]], label: "Line: (120,18) to (120,0)" }
       ]
     };
 
     const generatePattern = (patternData, width, height, colorHex) => {
       group.clear();
+      labelGroup.clear(); // Clear previous labels
       let shape = new THREE.Shape();
       let lastPoint = null;
 
@@ -225,31 +179,47 @@
       };
 
       patternData.forEach((segment) => {
-        if (segment[0] === "break") {
+        if (segment.type === "break") {
           addShape(shape);
           shape = new THREE.Shape();
           lastPoint = null;
           return;
         }
 
-        const scaled = segment[1].map(p => new THREE.Vector2(p[0] * (width / 100), p[1] * (height / 100)));
+        const scaled = segment.points.map(p => new THREE.Vector2(p[0] * (width / 100), p[1] * (height / 100)));
         const start = scaled[0];
 
         if (!lastPoint || !lastPoint.equals(start)) {
           shape.moveTo(start.x, start.y);
         }
 
-        if (segment[0] === "line") {
+        let labelPosition;
+        if (segment.type === "line") {
           shape.lineTo(scaled[1].x, scaled[1].y);
           lastPoint = scaled[1];
-        } else if (segment[0] === "bezier") {
+          labelPosition = new THREE.Vector3((scaled[0].x + scaled[1].x) / 2, (scaled[0].y + scaled[1].y) / 2, 5);
+        } else if (segment.type === "bezier") {
           shape.bezierCurveTo(scaled[1].x, scaled[1].y, scaled[2].x, scaled[2].y, scaled[3].x, scaled[3].y);
           lastPoint = scaled[3];
+          labelPosition = new THREE.Vector3(scaled[0].x, scaled[0].y - 5, 5); // Approximate label position near start
+        }
+        if (font && segment.label && labelGroup.visible) {
+          const textGeometry = new TextGeometry(segment.label, {
+            font: font,
+            size: 4,
+            height: 0.1,
+            curveSegments: 4,
+            bevelEnabled: false,
+          });
+          const textMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
+          const textMesh = new THREE.Mesh(textGeometry, textMaterial);
+          textMesh.position.copy(labelPosition);
+          textMesh.lookAt(camera.position);
+          labelGroup.add(textMesh);
         }
       });
 
       addShape(shape);
-
       const totalMeasurement = calculateTotalMeasurement(patternData, width, height);
       document.getElementById('measurementDisplay').textContent = `Total Measurement: ${totalMeasurement.toFixed(2)} cm`;
     };
@@ -257,8 +227,8 @@
     const calculateTotalMeasurement = (patternData, width, height) => {
       let total = 0;
       patternData.forEach((segment) => {
-        if (segment[0] === "break") return;
-        const scaledPoints = segment[1].map(p => new THREE.Vector2(p[0] * (width / 100), p[1] * (height / 100)));
+        if (segment.type === "break") return;
+        const scaledPoints = segment.points.map(p => new THREE.Vector2(p[0] * (width / 100), p[1] * (height / 100)));
         for (let i = 1; i < scaledPoints.length; i++) {
           total += scaledPoints[i].distanceTo(scaledPoints[i - 1]);
         }
@@ -271,8 +241,27 @@
     const heightSlider = document.getElementById('height');
     const scaleSlider = document.getElementById('scale');
     const colorInput = document.getElementById('fillColor');
+    const measurementDisplay = document.getElementById('measurementDisplay');
+
+    const toggleLabelsContainer = document.createElement('div');
+    toggleLabelsContainer.classList.add('toggle-labels-container');
+    const toggleLabelsLabel = document.createElement('label');
+    toggleLabelsLabel.textContent = 'Show Labels:';
+    const toggleLabelsCheckbox = document.createElement('input');
+    toggleLabelsCheckbox.type = 'checkbox';
+    toggleLabelsCheckbox.checked = true;
+
+    toggleLabelsContainer.appendChild(toggleLabelsLabel);
+    toggleLabelsContainer.appendChild(toggleLabelsCheckbox);
+    document.body.appendChild(toggleLabelsContainer);
+
+    toggleLabelsCheckbox.addEventListener('change', () => {
+      labelGroup.visible = toggleLabelsCheckbox.checked;
+    });
 
     function updatePattern() {
+      if (!font) return;
+
       const patternName = patternSelect.value;
       const patternData = patternPresets[patternName];
       let width = parseFloat(widthSlider.value);
@@ -311,15 +300,13 @@
       renderer.setSize(window.innerWidth, window.innerHeight);
     });
 
-    updatePattern();
-
     const animate = () => {
       requestAnimationFrame(animate);
       controls.update();
       renderer.render(scene, camera);
     };
-
     animate();
+
   </script>
 </body>
 </html>
