@@ -1,11 +1,7 @@
-from typing import List, Tuple, Union
+from typing import List, Tuple, Dict, Any
 import ezdxf
 import os
 import numpy as np
-
-Segment = Union[
-    Tuple[str, List[Tuple[float, float]]],  # 'line' or 'bezier'
-]
 
 class ShirtPattern:
     def __init__(self, height: float, width: float, sleeve_length: float, collar_width: float):
@@ -14,7 +10,7 @@ class ShirtPattern:
         self.sleeve_length = sleeve_length
         self.collar_width = collar_width
 
-    def generate_segments(self) -> List[Segment]:
+    def generate_segments(self) -> List[Tuple[str, List[Tuple[float, float]]]]:
         p0 = (0, 0)
         p1 = (self.width, 0)
         p2 = (self.width, self.height * 0.4)
@@ -22,7 +18,6 @@ class ShirtPattern:
         p4 = (0, self.height)
         p5 = (0, 0)
 
-        # Collar curve: top front
         bezier_collar = (
             "bezier",
             [
@@ -32,8 +27,6 @@ class ShirtPattern:
                 p1
             ]
         )
-
-        # Sleeve curve: side shoulder to underarm
         bezier_sleeve = (
             "bezier",
             [
@@ -43,8 +36,6 @@ class ShirtPattern:
                 p3
             ]
         )
-
-        # Right sleeve (optional shape shown outward)
         sleeve_start = p2
         sleeve_end = (self.width + self.sleeve_length, self.height * 0.6)
         bezier_sleeve_right = (
@@ -67,30 +58,68 @@ class ShirtPattern:
         ]
 
     @property
-    def segments(self) -> List[Segment]:
+    def segments(self) -> List[Tuple[str, List[Tuple[float, float]]]]:
         return self.generate_segments()
 
     def export_dxf(self, filename: str) -> str:
         doc = ezdxf.new()
         msp = doc.modelspace()
 
-        for segment in self.generate_segments():
-            if segment[0] == "line":
-                p1, p2 = segment[1]
+        for segment_type, segment_points in self.generate_segments():
+            if segment_type == "line":
+                p1, p2 = segment_points
                 msp.add_line(p1, p2)
-            elif segment[0] == "bezier":
-                p0, c1, c2, p3 = segment[1]
-                # Approximate cubic Bezier with 20-point polyline
-                def bezier(t): return (
+            elif segment_type == "bezier":
+                p0, c1, c2, p3 = segment_points
+                def bezier_calc(t): return (
                     (1 - t)**3 * np.array(p0) +
                     3 * (1 - t)**2 * t * np.array(c1) +
                     3 * (1 - t) * t**2 * np.array(c2) +
                     t**3 * np.array(p3)
                 )
-                points = [bezier(t) for t in np.linspace(0, 1, 20)]
+                points = [bezier_calc(t) for t in np.linspace(0, 1, 20)]
                 for a, b in zip(points[:-1], points[1:]):
                     msp.add_line(tuple(a), tuple(b))
 
         outpath = os.path.abspath(filename)
         doc.saveas(outpath)
         return outpath
+
+def create_dxf_from_segments(segments_data: List[Dict[str, Any]], filename: str) -> str:
+    doc = ezdxf.new()
+    msp = doc.modelspace()
+
+    for segment in segments_data:
+        segment_type = segment.get("type")
+        points_data = segment.get("points")
+
+        if not points_data:
+            continue
+
+        if segment_type == "line":
+            if len(points_data) == 2:
+                p1 = tuple(points_data[0])
+                p2 = tuple(points_data[1])
+                msp.add_line(p1, p2)
+        elif segment_type == "bezier":
+            if len(points_data) == 4:
+                p0 = tuple(points_data[0])
+                c1 = tuple(points_data[1])
+                c2 = tuple(points_data[2])
+                p3 = tuple(points_data[3])
+                
+                # Approximate cubic Bezier with 20-point polyline
+                def bezier_formula(t): return (
+                    (1 - t)**3 * np.array(p0) +
+                    3 * (1 - t)**2 * t * np.array(c1) +
+                    3 * (1 - t) * t**2 * np.array(c2) +
+                    t**3 * np.array(p3)
+                )
+                poly_points = [bezier_formula(t) for t in np.linspace(0, 1, 20)]
+                for i in range(len(poly_points) - 1):
+                    msp.add_line(tuple(poly_points[i]), tuple(poly_points[i+1]))
+    
+    outpath = os.path.abspath(filename)
+    os.makedirs(os.path.dirname(outpath), exist_ok=True)
+    doc.saveas(outpath)
+    return outpath
