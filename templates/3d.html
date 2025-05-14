@@ -54,6 +54,17 @@
     <button class="zoom-button" id="zoomOut"><i class="fas fa-minus"></i></button>
   </div>
 
+  <div class="controls-bottom-right">
+    <div class="toggle-control" id="mirrorPatternContainer">
+      <label for="mirrorPatternCheckbox">Mirror Pattern</label>
+      <input type="checkbox" id="mirrorPatternCheckbox">
+    </div>
+    <div class="toggle-control" id="toggleLabelsContainer">
+      <label for="toggleLabelsCheckbox">Show Labels</label>
+      <input type="checkbox" id="toggleLabelsCheckbox" checked>
+    </div>
+  </div>
+
   <script type="module">
     import * as THREE from 'three';
     import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -74,11 +85,9 @@
 
     const group = new THREE.Group();
     scene.add(group);
-    // group.position.set(0, 0, 0);
-
+    
     const labelGroup = new THREE.Group();
     scene.add(labelGroup);
-    labelGroup.visible = true;
 
     const fontLoader = new FontLoader();
     let font;
@@ -141,6 +150,7 @@
         { type: "bezier", points: [[35, 42], [40, 40], [42, 35], [40, 30]], label: "Bezier: (35,42), (40,40), (42,35), (40,30)" },
         { type: "line", points: [[40, 30], [20, 12]], label: "Line: (40,30) to (20,12)" },
         { type: "line", points: [[20, 12], [20, 0]], label: "Line: (20,12) to (20,0)" },
+        { type: "break"},
         { type: "line", points: [[120, 0], [180, 0]], label: "Line: (120,0) to (180,0)" },
         { type: "bezier", points: [[120, 0], [125, 5], [123, 15], [130, 18]], label: "Bezier: (120,0), (125,5), (123,15), (130,18)" },
         { type: "line", points: [[130, 18], [130, 32]], label: "Line: (130,18) to (130,32)" },
@@ -156,13 +166,12 @@
       ]
     };
 
-    const generatePattern = (patternData, width, height, colorHex) => {
-      group.clear();
-      labelGroup.clear(); // Clear previous labels
+    // Function to generate and add a single pattern piece (original or mirrored)
+    const generatePatternShape = (patternData, width, height, colorHex, isMirrored = false) => {
       let shape = new THREE.Shape();
       let lastPoint = null;
 
-      const addShape = (shp) => {
+      const addShapeToGroup = (shp) => {
         if (shp && shp.getPoints().length > 1) {
           const geometry = new THREE.ShapeGeometry(shp);
           const fill = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({
@@ -180,13 +189,15 @@
 
       patternData.forEach((segment) => {
         if (segment.type === "break") {
-          addShape(shape);
-          shape = new THREE.Shape();
+          addShapeToGroup(shape);
+          shape = new THREE.Shape(); // Start a new shape for the next piece
           lastPoint = null;
           return;
         }
 
-        const scaled = segment.points.map(p => new THREE.Vector2(p[0] * (width / 100), p[1] * (height / 100)));
+        // Apply mirroring to points if isMirrored is true
+        const processedPoints = segment.points.map(p => isMirrored ? [-p[0], p[1]] : [p[0], p[1]]);
+        const scaled = processedPoints.map(p => new THREE.Vector2(p[0] * (width / 100), p[1] * (height / 100)));
         const start = scaled[0];
 
         if (!lastPoint || !lastPoint.equals(start)) {
@@ -194,6 +205,8 @@
         }
 
         let labelPosition;
+        // let labelText = segment.label || ""; // labelText definition moved inside the conditional block
+
         if (segment.type === "line") {
           shape.lineTo(scaled[1].x, scaled[1].y);
           lastPoint = scaled[1];
@@ -201,10 +214,14 @@
         } else if (segment.type === "bezier") {
           shape.bezierCurveTo(scaled[1].x, scaled[1].y, scaled[2].x, scaled[2].y, scaled[3].x, scaled[3].y);
           lastPoint = scaled[3];
-          labelPosition = new THREE.Vector3(scaled[0].x, scaled[0].y - 5, 5); // Approximate label position near start
+          labelPosition = new THREE.Vector3(scaled[0].x, scaled[0].y - 5, 5);
         }
-        if (font && segment.label && labelGroup.visible) {
-          const textGeometry = new TextGeometry(segment.label, {
+        
+        // MODIFIED CONDITION: Only create labels if NOT mirrored and labels are visible
+        if (font && segment.label && labelGroup.visible && !isMirrored) {
+          const labelText = segment.label || ""; // Define labelText here
+          
+          const textGeometry = new TextGeometry(labelText, {
             font: font,
             size: 4,
             height: 0.1,
@@ -214,24 +231,28 @@
           const textMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
           const textMesh = new THREE.Mesh(textGeometry, textMaterial);
           textMesh.position.copy(labelPosition);
-          textMesh.lookAt(camera.position);
-          labelGroup.add(textMesh);
+          textMesh.lookAt(camera.position); 
+          labelGroup.add(textMesh); 
         }
       });
-
-      addShape(shape);
-      const totalMeasurement = calculateTotalMeasurement(patternData, width, height);
-      document.getElementById('measurementDisplay').textContent = `Total Measurement: ${totalMeasurement.toFixed(2)} cm`;
+      addShapeToGroup(shape); 
     };
 
-    const calculateTotalMeasurement = (patternData, width, height) => {
+    const calculateTotalMeasurement = (patternData, currentWidth, currentHeight) => {
       let total = 0;
       patternData.forEach((segment) => {
         if (segment.type === "break") return;
-        const scaledPoints = segment.points.map(p => new THREE.Vector2(p[0] * (width / 100), p[1] * (height / 100)));
+        // Use original points for measurement, scaled by current width/height factors
+        const scaledPoints = segment.points.map(p => new THREE.Vector2(p[0] * (currentWidth / 100), p[1] * (currentHeight / 100)));
         for (let i = 1; i < scaledPoints.length; i++) {
-          total += scaledPoints[i].distanceTo(scaledPoints[i - 1]);
+            // For bezier, this is an approximation (chord length). True arc length is more complex.
+            // For simplicity, we sum lengths of defining points for bezier too.
+            if (segment.type === "line" || segment.type === "bezier") { // Treat bezier points similarly for this rough calc
+                 total += scaledPoints[i].distanceTo(scaledPoints[i - 1]);
+            }
         }
+         // A more accurate bezier length calculation would involve integrating its derivative or using an approximation method.
+         // Current method for bezier will give length of control polygon, not the curve itself.
       });
       return total;
     };
@@ -242,39 +263,56 @@
     const scaleSlider = document.getElementById('scale');
     const colorInput = document.getElementById('fillColor');
     const measurementDisplay = document.getElementById('measurementDisplay');
+    
+    const toggleLabelsCheckbox = document.getElementById('toggleLabelsCheckbox');
+    const mirrorPatternCheckbox = document.getElementById('mirrorPatternCheckbox');
 
-    const toggleLabelsContainer = document.createElement('div');
-    toggleLabelsContainer.classList.add('toggle-labels-container');
-    const toggleLabelsLabel = document.createElement('label');
-    toggleLabelsLabel.textContent = 'Show Labels:';
-    const toggleLabelsCheckbox = document.createElement('input');
-    toggleLabelsCheckbox.type = 'checkbox';
-    toggleLabelsCheckbox.checked = true;
-
-    toggleLabelsContainer.appendChild(toggleLabelsLabel);
-    toggleLabelsContainer.appendChild(toggleLabelsCheckbox);
-    document.body.appendChild(toggleLabelsContainer);
 
     toggleLabelsCheckbox.addEventListener('change', () => {
       labelGroup.visible = toggleLabelsCheckbox.checked;
+      updatePattern(); // Redraw to show/hide labels
     });
+    
+    mirrorPatternCheckbox.addEventListener('change', updatePattern);
+
 
     function updatePattern() {
-      if (!font) return;
+      if (!font) return; // Don't draw if font isn't loaded
+
+      // Clear existing pattern and labels from the groups
+      while(group.children.length > 0){ group.remove(group.children[0]); }
+      while(labelGroup.children.length > 0){ labelGroup.remove(labelGroup.children[0]); }
 
       const patternName = patternSelect.value;
-      const patternData = patternPresets[patternName];
-      let width = parseFloat(widthSlider.value);
-      let height = parseFloat(heightSlider.value);
+      // Use a deep copy of the preset data to avoid modifying the original presets
+      const originalPatternData = JSON.parse(JSON.stringify(patternPresets[patternName])); 
+      
+      let currentWidth = parseFloat(widthSlider.value);
+      let currentHeight = parseFloat(heightSlider.value);
       const scale = parseFloat(scaleSlider.value);
       const fillColor = colorInput.value;
 
-      if (scale !== 1.0) {
-        width *= scale;
-        height *= scale;
-      }
+      // Apply uniform scale
+      // Note: The actual points in patternPresets are defined relative to a 100x100 box.
+      // The width/height sliders then stretch this. Scale is an additional multiplier.
+      // For simplicity in generatePatternShape, we'll pass scaled width/height.
+      // Or, adjust points directly. Let's adjust width/height passed.
+      const effectiveWidth = currentWidth * scale;
+      const effectiveHeight = currentHeight * scale;
+      
+      // Generate and add the original pattern
+      generatePatternShape(originalPatternData, effectiveWidth, effectiveHeight, fillColor, false);
 
-      generatePattern(patternData, width, height, fillColor);
+      if (mirrorPatternCheckbox.checked) {
+        // Generate and add the mirrored pattern.
+        // The `isMirrored = true` flag in generatePatternShape will handle negating x-coordinates.
+        generatePatternShape(originalPatternData, effectiveWidth, effectiveHeight, fillColor, true);
+      }
+      
+      // Calculate measurement based on the original pattern data and current dimensions
+      const totalMeasurement = calculateTotalMeasurement(originalPatternData, effectiveWidth, effectiveHeight);
+      // If mirrored, the total material might be considered double, but the measurement here refers to one piece.
+      measurementDisplay.textContent = `Total Measurement: ${totalMeasurement.toFixed(2)} cm`;
     }
 
     patternSelect.addEventListener('change', updatePattern);
@@ -287,11 +325,13 @@
     const zoomOutButton = document.getElementById('zoomOut');
 
     zoomInButton.addEventListener('click', () => {
-      camera.position.z -= 10;
+      camera.position.z = Math.max(camera.position.z - 20, 10); // Prevent zooming too close
+      controls.update();
     });
 
     zoomOutButton.addEventListener('click', () => {
-      camera.position.z += 10;
+      camera.position.z += 20;
+      controls.update();
     });
 
     window.addEventListener("resize", () => {
@@ -302,9 +342,12 @@
 
     const animate = () => {
       requestAnimationFrame(animate);
-      controls.update();
+      controls.update(); // Only if damping or auto-rotation is enabled
       renderer.render(scene, camera);
     };
+    
+    // Initial call to draw the pattern once everything is set up (font might still be loading)
+    // updatePattern() is called inside fontLoader callback for the very first draw.
     animate();
 
   </script>
