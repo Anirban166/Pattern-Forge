@@ -24,9 +24,6 @@
       <select id="patternPreset">
         <option value="basic">Basic Shirt</option>
         <option value="shirtWithCollar">Shirt with Collar</option>
-        <option value="shirtWithSleeves">Shirt with Sleeves</option>
-        <option value="shirtWithYoke">Shirt with Yoke</option>
-        <option value="shirtFull">Full Shirt</option>
       </select>
     </div>
     <div class="control-group">
@@ -102,68 +99,27 @@
 
     const patternPresets = {
       basic: [
-        { type: "line", points: [[90, 0], [90, 40]], label: "Line: (90,0) to (90,40)" },
-        { type: "bezier", points: [[90, 40], [90, 60], [63, 80], [45, 100]], label: "Bezier: (90,40), (90,60), (63,80), (45,100)" },
-        { type: "line", points: [[45, 100], [0, 100]], label: "Line: (45,100) to (0,100)" },
-        { type: "line", points: [[0, 100], [0, 0]], label: "Line: (0,100) to (0,0)" },
-        { type: "bezier", points: [[0, 0], [18, -40], [72, -40], [90, 0]], label: "Bezier: (0,0), (18,-40), (72,-40), (90,0)" }
+        { type: "line", points: [[0, 0], [100, 0]], label: "Top Line: (0, 0) to (100, 0)" },
+        { type: "line", points: [[100, 0], [100, 50]], label: "Right Line: (100, 0) to (100, 50)" },
+        {
+          type: "bezier",
+          points: [
+            [100, 50],
+            [75, 60],   // Inward pull (control point one)
+            [55, 75],  // Deeper dip towards center (p2)
+            [45, 100] // Armscye ending (underarm)
+          ],
+          label: "Scye Curve: (100, 50) to (45, 100)"
+        },
+        { type: "line", points: [[45, 100], [0, 100]], label: "Bottom Line: (45, 100) to (0, 100)" },
+        { type: "line", points: [[0, 100], [0, 0]], label: "Left Line: (0, 100) to (0, 0)" }
       ],
       shirtWithCollar: [
-        { type: "line", points: [[90, 0], [90, 40]], label: "Line: (90,0) to (90,40)" },
-        { type: "bezier", points: [[90, 40], [90, 60], [63, 80], [45, 100]], label: "Bezier: (90,40), (90,60), (63,80), (45,100)" },
-        { type: "line", points: [[45, 100], [0, 100]], label: "Line: (45,100) to (0,100)" },
-        { type: "line", points: [[0, 100], [0, 40]], label: "Line: (0,100) to (0,40)" },
-        { type: "bezier", points: [[0, 40], [18, -10], [72, -10], [90, 0]], label: "Bezier: (0,40), (18,-10), (72,-10), (90,0)" }
-      ],
-      shirtWithSleeves: [
-        { type: "line", points: [[90, 0], [90, 40]], label: "Line: (90,0) to (90,40)" },
-        { type: "bezier", points: [[90, 40], [90, 60], [63, 80], [45, 100]], label: "Bezier: (90,40), (90,60), (63,80), (45,100)" },
-        { type: "line", points: [[45, 100], [0, 100]], label: "Line: (45,100) to (0,100)" },
-        { type: "line", points: [[0, 100], [0, 0]], label: "Line: (0,100) to (0,0)" },
-        { type: "bezier", points: [[0, 0], [18, -40], [72, -40], [90, 0]], label: "Bezier: (0,0), (18,-40), (72,-40), (90,0)" },
-        { type: "break" },
-        { type: "bezier", points: [[90, 40], [110, 30], [130, 60], [150, 50]], label: "Bezier: (90,40), (110,30), (130,60), (150,50)" },
-        { type: "line", points: [[150, 50], [160, 70]], label: "Line: (150,50) to (160,70)" },
-        { type: "line", points: [[160, 70], [170, 90]], label: "Line: (160,70) to (170,90)" },
-        { type: "line", points: [[170, 90], [160, 110]], label: "Line: (170,90) to (160,110)" },
-        { type: "line", points: [[160, 110], [140, 120]], label: "Line: (160,110) to (140,120)" },
-        { type: "line", points: [[140, 120], [130, 100]], label: "Line: (140,120) to (130,100)" },
-        { type: "line", points: [[130, 100], [150, 100]], label: "Line: (130,100) to (150,100)" }
-      ],
-      shirtWithYoke: [
-        { type: "line", points: [[90, 0], [90, 40]], label: "Line: (90,0) to (90,40)" },
-        { type: "bezier", points: [[90, 40], [90, 60], [63, 80], [45, 100]], label: "Bezier: (90,40), (90,60), (63,80), (45,100)" },
-        { type: "line", points: [[45, 100], [0, 100]], label: "Line: (45,100) to (0,100)" },
-        { type: "line", points: [[0, 100], [0, 40]], label: "Line: (0,100) to (0,40)" },
-        { type: "line", points: [[0, 40], [45, 40]], label: "Line: (0,40) to (45,40)" },
-        { type: "line", points: [[45, 40], [90, 40]], label: "Line: (45,40) to (90,40)" }
-      ],
-      shirtFull: [
-        { type: "line", points: [[20, 0], [80, 0]], label: "Line: (20,0) to (80,0)" },
-        { type: "bezier", points: [[80, 0], [85, 5], [83, 10], [80, 12]], label: "Bezier: (80,0), (85,5), (83,10), (80,12)" },
-        { type: "line", points: [[80, 12], [80, 30]], label: "Line: (80,12) to (80,30)" },
-        { type: "bezier", points: [[80, 30], [78, 35], [75, 40], [70, 42]], label: "Bezier: (80,30), (78,35), (75,40), (70,42)" },
-        { type: "bezier", points: [[70, 42], [65, 50], [60, 65], [60, 80]], label: "Bezier: (70,42), (65,50), (60,65), (60,80)" },
-        { type: "line", points: [[60, 80], [60, 100]], label: "Line: (60,80) to (60,100)" },
-        { type: "line", points: [[60, 100], [20, 100]], label: "Line: (60,100) to (20,100)" },
-        { type: "line", points: [[20, 100], [20, 80]], label: "Line: (20,100) to (20,80)" },
-        { type: "bezier", points: [[20, 80], [25, 65], [30, 50], [35, 42]], label: "Bezier: (20,80), (25,65), (30,50), (35,42)" },
-        { type: "bezier", points: [[35, 42], [40, 40], [42, 35], [40, 30]], label: "Bezier: (35,42), (40,40), (42,35), (40,30)" },
-        { type: "line", points: [[40, 30], [20, 12]], label: "Line: (40,30) to (20,12)" },
-        { type: "line", points: [[20, 12], [20, 0]], label: "Line: (20,12) to (20,0)" },
-        { type: "break"}, 
-        { type: "line", points: [[120, 0], [180, 0]], label: "Line: (120,0) to (180,0)" },
-        { type: "bezier", points: [[120, 0], [125, 5], [123, 15], [130, 18]], label: "Bezier: (120,0), (125,5), (123,15), (130,18)" },
-        { type: "line", points: [[130, 18], [130, 32]], label: "Line: (130,18) to (130,32)" },
-        { type: "bezier", points: [[130, 32], [132, 37], [135, 42], [140, 44]], label: "Bezier: (130,32), (132,37), (135,42), (140,44)" },
-        { type: "bezier", points: [[140, 44], [145, 52], [150, 67], [150, 82]], label: "Bezier: (140,44), (145,52), (150,67), (150,82)" },
-        { type: "line", points: [[150, 82], [150, 100]], label: "Line: (150,82) to (150,100)" },
-        { type: "line", points: [[150, 100], [120, 100]], label: "Line: (150,100) to (120,100)" },
-        { type: "line", points: [[120, 100], [120, 82]], label: "Line: (120,100) to (120,82)" },
-        { type: "bezier", points: [[120, 82], [125, 67], [130, 52], [135, 44]], label: "Bezier: (120,82), (125,67), (130,52), (135,44)" },
-        { type: "bezier", points: [[135, 44], [138, 42], [140, 37], [138, 32]], label: "Bezier: (135,44), (138,42), (140,37), (138,32)" },
-        { type: "line", points: [[138, 32], [120, 18]], label: "Line: (138,32) to (120,18)" },
-        { type: "line", points: [[120, 18], [120, 0]], label: "Line: (120,18) to (120,0)" }
+        { type: "line", points: [[90, 0], [90, 40]], label: "Line: (90, 0) to (90, 40)" },
+        { type: "bezier", points: [[90, 40], [90, 60], [63, 80], [45, 100]], label: "Bezier: (90, 40), (90, 60), (63, 80), (45, 100)" },
+        { type: "line", points: [[45, 100], [0, 100]], label: "Line: (45, 100) to (0, 100)" },
+        { type: "line", points: [[0, 100], [0, 40]], label: "Line: (0, 100) to (0, 40)" },
+        { type: "bezier", points: [[0, 40], [18, -10], [72, -10], [90, 0]], label: "Bezier: (0, 40), (18, -10), (72, -10), (90, 0)" }
       ]
     };
 
