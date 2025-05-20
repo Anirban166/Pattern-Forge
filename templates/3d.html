@@ -22,8 +22,8 @@
     <div class="control-group">
       <label for="patternPreset">Pattern Preset</label>
       <select id="patternPreset">
-        <option value="basic">Basic Shirt</option>
-        <option value="shirtWithCollar">Shirt with Collar</option>
+        <option value="shirt">Shirt</option>
+        <option value="collar">Collar</option>
       </select>
     </div>
     <div class="control-group">
@@ -75,7 +75,7 @@
     scene.background = new THREE.Color(0x1e1e1e); 
 
     const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-    camera.position.set(0, 0, 200); 
+    camera.position.set(0, 0, 200);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, canvas: document.getElementById('canvas') });
     renderer.setSize(window.innerWidth, window.innerHeight);
@@ -83,11 +83,16 @@
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
 
-    const group = new THREE.Group(); 
+    const group = new THREE.Group();
     scene.add(group);
     
-    const labelGroup = new THREE.Group(); 
+    const labelGroup = new THREE.Group();
     scene.add(labelGroup);
+
+    group.position.x = -10;
+    labelGroup.position.x = -10;
+    group.position.y = -45;
+    labelGroup.position.y = -45;
 
     const fontLoader = new FontLoader();
     let font;
@@ -98,23 +103,33 @@
     });
 
     const patternPresets = {
-      basic: [
-        { type: "line", points: [[0, 0], [100, 0]], label: "Top Line: (0, 0) to (100, 0)" },
-        { type: "line", points: [[100, 0], [100, 50]], label: "Right Line: (100, 0) to (100, 50)" },
-        {
-          type: "bezier",
-          points: [
-            [100, 50],
-            [75, 60],   // Inward pull (control point one)
-            [55, 75],  // Deeper dip towards center (p2)
-            [45, 100] // Armscye ending (underarm)
-          ],
-          label: "Scye Curve: (100, 50) to (45, 100)"
-        },
-        { type: "line", points: [[45, 100], [0, 100]], label: "Bottom Line: (45, 100) to (0, 100)" },
-        { type: "line", points: [[0, 100], [0, 0]], label: "Left Line: (0, 100) to (0, 0)" }
+      shirt: [
+      { type: "line", points: [[0, 0], [100, 0]], label: "Bottom Line: (0, 0) to (100, 0)" },
+      { type: "line", points: [[100, 0], [100, 90]], label: "Right Line: (100, 0) to (100, 90)" },
+      {
+        type: "bezier",
+        points: [
+          [100, 90],
+          [79, 96],
+          [66, 113],
+          [60, 130]
+        ],
+        label: "Armscye Curve: (60, 130) to (100, 90)"
+      },
+      { type: "line", points: [[60, 130], [10, 130]], label: "Top Line: (10, 130) to (60, 130)" },
+      {
+        type: "bezier",
+        points: [
+          [10, 130],
+          [15, 126],
+          [18, 118],
+          [0, 100]
+        ],
+        label: "Collar Curve: (0, 100) to (10, 130)"
+      },
+      { type: "line", points: [[0, 100], [0, 0]], label: "Left Line: (0, 0) to (0, 100)" }
       ],
-      shirtWithCollar: [
+      collar: [
         { type: "line", points: [[90, 0], [90, 40]], label: "Line: (90, 0) to (90, 40)" },
         { type: "bezier", points: [[90, 40], [90, 60], [63, 80], [45, 100]], label: "Bezier: (90, 40), (90, 60), (63, 80), (45, 100)" },
         { type: "line", points: [[45, 100], [0, 100]], label: "Line: (45, 100) to (0, 100)" },
