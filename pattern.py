@@ -1,5 +1,6 @@
 import ezdxf, os
 import numpy as np
+from collections import defaultdict
 from typing import List, Tuple, Dict, Any
 
 class ShirtPattern:
@@ -124,23 +125,26 @@ def create_dxf_from_segments(segments_data: List[Dict[str, Any]], filename: str)
     return outpath
 
 def merge_layer(entityList, targetLayer):
-    targetLayerList = []
+    targetLayerLinesList = []
     for entity in entityList:
         if entity.get("layer") == targetLayer and entity.get("type") == "LINE":
-            targetLayerList.append(entity)
+            targetLayerLinesList.append(entity)
 
-    verticesDict = dict
-    for line in targetLayerList:
+    verticesDict = defaultdict(list)
+    for line in targetLayerLinesList:
         x = tuple(line["vertices"][0].values())
         y = tuple(line["vertices"][1].values())
-        if x not in verticesDict:
-            verticesDict[x] = []
-        if y not in verticesDict:
-            verticesDict[y] = []
         verticesDict[x].append(y)
         verticesDict[y].append(x)
 
-    startingVertex = next((vertex for vertex, connections in verticesDict.items() if len(connections) == 1), tuple(targetLayerList[0]["vertices"][0].values()))
+    startingVertex = None
+    for vertex, connections in verticesDict.items():
+        if len(connections) == 1:
+            startingVertex = vertex
+            break
+    if startingVertex is None:
+        startingVertex = tuple(targetLayerLinesList[0]["vertices"][0].values())
+
     currentVertex = startingVertex
     visited = set()
     mergedVertices = []
