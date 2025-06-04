@@ -1,7 +1,6 @@
-from typing import List, Tuple, Dict, Any
-import ezdxf
-import os
+import ezdxf, os
 import numpy as np
+from typing import List, Tuple, Dict, Any
 
 class ShirtPattern:
     def __init__(self, height: float, width: float, sleeve_length: float, collar_width: float):
@@ -123,3 +122,46 @@ def create_dxf_from_segments(segments_data: List[Dict[str, Any]], filename: str)
     os.makedirs(os.path.dirname(outpath), exist_ok=True)
     doc.saveas(outpath)
     return outpath
+
+def merge_layer(entityList, targetLayer):
+    targetLayerList = []
+    for entity in entityList:
+        if entity.get("layer") == targetLayer and entity.get("type") == "LINE":
+            targetLayerList.append(entity)
+
+    verticesDict = dict
+    for line in targetLayerList:
+        x = tuple(line["vertices"][0].values())
+        y = tuple(line["vertices"][1].values())
+        if x not in verticesDict:
+            verticesDict[x] = []
+        if y not in verticesDict:
+            verticesDict[y] = []
+        verticesDict[x].append(y)
+        verticesDict[y].append(x)
+
+    startingVertex = next((vertex for vertex, connections in verticesDict.items() if len(connections) == 1), tuple(targetLayerList[0]["vertices"][0].values()))
+    currentVertex = startingVertex
+    visited = set()
+    mergedVertices = []
+    mergedVertices.append({"x": currentVertex[0], "y": currentVertex[1]})
+
+    while True:
+        foundUnvisitedEdge = False
+        for nextVertex in verticesDict[currentVertex]:
+            edge = tuple(sorted((currentVertex, nextVertex)))
+            if edge not in visited:
+                mergedVertices.append({"x": nextVertex[0], "y": nextVertex[1]})
+                visited.add(edge)
+                currentVertex = nextVertex
+                foundUnvisitedEdge = True
+                break
+        if not foundUnvisitedEdge:
+            break
+
+    polyLineEntity = {
+        "type": "POLYLINE",
+        "vertices": mergedVertices,
+        "layer": targetLayer
+    }
+    return polyLineEntity
